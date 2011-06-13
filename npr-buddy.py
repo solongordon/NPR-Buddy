@@ -25,12 +25,12 @@ class StreamingMP3(object):
     def __init__(self, url):
         self.url = url
 
-    @property
-    def filename(self):
+    def get_filename(self):
         return re.findall("[^/]*\\.mp3", self.url)[-1]
 
     def save(self, target=None, reporthook=None):
-        target = self.filename if target is None else target
+        if target is None:
+            target = self.get_filename()
         try:
             urlretrieve(self.url, target + ".temp", reporthook=reporthook)
             os.rename(target + ".temp", target)
@@ -43,13 +43,11 @@ class MP3Page(object):
         self.url = url
         self._source = urlopen(self.url).read()
 
-    @property
-    def mp3s(self):
+    def get_mp3s(self):
         mp3_urls = re.findall('http[^";,]*\\.mp3[^"]*', self._source)
         return [StreamingMP3(url) for url in mp3_urls]
 
-    @property
-    def domain(self):
+    def get_domain(self):
         return re.findall("[^/\.]*(?=\..{3}/)", self.url)[0]
 
 class MP3Scraper(object):
@@ -74,29 +72,30 @@ class MP3Scraper(object):
 
         # Get mp3s.
         print "scraping %s" % self._page.url
-        mp3s = self._page.mp3s
+        mp3s = self._page.get_mp3s()
         track = 0
         new_files = False
         for mp3 in mp3s[:self._max_files]:
             track += 1
-            if os.path.exists(mp3.filename):
+            target = mp3.get_filename()
+            if os.path.exists(target):
                 # Don't replace pre-existing files.
-                print 'skipping %s' % mp3.filename
-                mp3_file = MP3File(mp3.filename)
+                print 'skipping %s' % target
+                mp3_file = MP3File(target)
             else:
-                print 'downloading %s...         ' % mp3.filename,
+                print 'downloading %s...         ' % target
                 mp3_file = mp3.save(reporthook=self._report_progress)
                 print
                 new_files = True
             if self._apply_id3_tags and new_files:
                 mp3_file.write_tags(artist='Podcast',
                                     album=self._label,
-                                    title=mp3.filename[:-4],
+                                    title=target[:-4],
                                     tracknumber=str(track),
                                     date=str(datetime.date.today().year),
                                     genre='Podcast')
         if self._delete_old_files and len(mp3s) > 0:
-            downloaded_files = set([mp3.filename for mp3 in mp3s])
+            downloaded_files = set([mp3.get_filename() for mp3 in mp3s])
             existing_files = set(os.listdir(os.curdir))
             for filename in existing_files.difference(downloaded_files):
                 if not filename.startswith('('):
