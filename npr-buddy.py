@@ -2,9 +2,9 @@ import os
 import sys
 import re
 import string
+import datetime
 from urllib import urlretrieve
 from urllib2 import urlopen
-from datetime import date
 
 import mutagen.mp3
 import mutagen.easyid3
@@ -91,13 +91,17 @@ class MP3Scraper(object):
       if self._apply_id3_tags and new_files:
         mp3_file.write_tags(artist='Podcast', album=self._label,
                             title=mp3.filename[:-4], tracknumber=str(track),
-                            date=str(date.today().year), genre='Podcast')
-    if self._delete_old_files and len(mp3s) > 0:
+                            date=str(datetime.date.today().year),
+                            genre='Podcast')
+    if len(mp3s) > 0 and self._delete_old_files:
       downloaded_files = set([mp3.filename for mp3 in mp3s])
       existing_files = set(os.listdir(os.curdir))
       for filename in existing_files.difference(downloaded_files):
-        print 'removing %s' % filename
-        os.remove(filename)
+        if not filename.startswith('('):
+          print 'removing %s' % filename
+          os.remove(filename)
+    if new_files:
+      self._save_timestamp_file()
           
     # Change back to the initial directory.
     os.chdir(self._original_dir)
@@ -110,11 +114,18 @@ class MP3Scraper(object):
     valid_chars = "-_() " + string.ascii_letters + string.digits
     return filter(lambda x: x in valid_chars, value)
 
+  def _save_timestamp_file(self):
+    for f in os.listdir('.'):
+      if f.startswith('(') and f.endswith(').mp3'):
+        os.remove(f)
+    filename = "(%s).mp3" % datetime.datetime.now().strftime("%a, %b %d")
+    open(filename, 'wt').close()
+
 if __name__ == '__main__':
   from ConfigParser import SafeConfigParser
 
   config = SafeConfigParser()
-  config.read('npr-buddy.ini')
+  config.read('npr-buddy.cfg')
   for label in sorted(config.sections()):
     url = config.get(label, 'url')
     directory = config.get(label, 'directory')
