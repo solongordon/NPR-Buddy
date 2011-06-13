@@ -126,7 +126,7 @@ if __name__ == '__main__':
     from ConfigParser import SafeConfigParser
 
     config = SafeConfigParser()
-    config.read('npr-buddy.cfg')
+    config.read('npr-buddy.ini')
     for label in sorted(config.sections()):
         url = config.get(label, 'url')
         directory = config.get(label, 'directory')
