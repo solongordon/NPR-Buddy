@@ -95,7 +95,7 @@ class MP3Scraper(object):
                                     tracknumber=str(track),
                                     date=str(datetime.date.today().year),
                                     genre='Podcast')
-        if len(mp3s) > 0 and self._delete_old_files:
+        if self._delete_old_files and len(mp3s) > 0:
             downloaded_files = set([mp3.filename for mp3 in mp3s])
             existing_files = set(os.listdir(os.curdir))
             for filename in existing_files.difference(downloaded_files):
