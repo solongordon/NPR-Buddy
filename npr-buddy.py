@@ -9,6 +9,14 @@ from urllib2 import urlopen
 import mutagen.mp3
 import mutagen.easyid3
 
+# Try to import pynotify for desktop notifications. Ubuntu-only.
+try:
+    import pynotify
+    pynotify.init('Basics')
+    PYNOTIFY_AVAILABLE = True
+except ImportError:
+    PYNOTIFY_AVAILABLE = False
+
 class MP3File(object):
     def __init__(self, filename):
         self.filename = filename
@@ -52,13 +60,14 @@ class MP3Page(object):
 
 class MP3Scraper(object):
     def __init__(self, url, label, directory='.', delete_old_files=True,
-                 apply_id3_tags=True, max_files=30):
+                 apply_id3_tags=True, max_files=30, show_alerts=False):
         self._page = MP3Page(url)
         self._label = label
         self._directory = directory
         self._delete_old_files = delete_old_files
         self._apply_id3_tags = apply_id3_tags
         self._max_files = max_files
+        self._show_alerts = show_alerts
         self._original_dir = os.getcwd()
 
     def run(self):
@@ -103,6 +112,8 @@ class MP3Scraper(object):
                     os.remove(filename)
         if new_files:
             self._save_timestamp_file()
+            if self._show_alerts:
+                self._trigger_alert("Podcast updated", self._label)
 
         # Change back to the initial directory.
         os.chdir(self._original_dir)
@@ -122,6 +133,10 @@ class MP3Scraper(object):
         filename = "(%s).mp3" % datetime.datetime.now().strftime("%a, %b %d")
         open(filename, 'wt').close()
 
+    def _trigger_alert(self, title, body):
+        if PYNOTIFY_AVAILABLE:
+            pynotify.Notification(title, body).show()
+
 if __name__ == '__main__':
     from ConfigParser import SafeConfigParser
 
@@ -133,7 +148,9 @@ if __name__ == '__main__':
         apply_id3_tags = config.get(label, 'apply_id3_tags')
         delete_old_files = config.getboolean(label, 'delete_old_files')
         max_files = config.getint(label, 'max_files')
+        show_alerts = config.getboolean(label, 'show_alerts')
         MP3Scraper(url, label, directory=directory,
                    delete_old_files=delete_old_files,
-                   apply_id3_tags=apply_id3_tags, max_files=max_files).run()
+                   apply_id3_tags=apply_id3_tags, max_files=max_files,
+                   show_alerts=show_alerts).run()
         print
