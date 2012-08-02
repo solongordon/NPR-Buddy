@@ -92,7 +92,8 @@ class MP3Scraper(object):
                 print 'skipping %s' % target
                 mp3_file = MP3File(target)
             else:
-                print 'downloading %s...         ' % target
+                sys.stdout.write('downloading %s...     ' % target)
+                sys.stdout.flush()
                 mp3_file = mp3.save(reporthook=self._report_progress)
                 print
                 new_files = True
@@ -111,7 +112,6 @@ class MP3Scraper(object):
                     print 'removing %s' % filename
                     os.remove(filename)
         if new_files:
-            self._save_timestamp_file()
             if self._show_alerts:
                 self._trigger_alert("Podcast updated", self._label)
 
@@ -121,17 +121,11 @@ class MP3Scraper(object):
     def _report_progress(self, blocks_transferred, block_size, total_size):
         progress_pct = 100 * blocks_transferred * block_size / total_size
         sys.stdout.write("\b\b\b\b%3d%%" % min(100, progress_pct))
+        sys.stdout.flush()
 
     def _slugify(self, value):
         valid_chars = "-_() " + string.ascii_letters + string.digits
         return filter(lambda x: x in valid_chars, value)
-
-    def _save_timestamp_file(self):
-        for f in os.listdir('.'):
-            if f.startswith('(') and f.endswith(').mp3'):
-                os.remove(f)
-        filename = "(%s).mp3" % datetime.datetime.now().strftime("%a, %b %d")
-        open(filename, 'wt').close()
 
     def _trigger_alert(self, title, body):
         if PYNOTIFY_AVAILABLE:
